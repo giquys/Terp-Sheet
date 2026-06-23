@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terp Ref</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  /* ── Color system ──────────────────────────────────────────────
+     Color = effect category. Used consistently everywhere:
+     AMBER  = body / physical (pain, inflammation, muscle)
+     VIOLET = calm / sleep (sedating, anxiolytic, wind-down)
+     CYAN   = mental / daytime (focus, uplift, creative, energy)
+     RED    = caution (can worsen anxiety, unpredictable)
+     ──────────────────────────────────────────────────────────── */
+  :root {
+    --bg:      #0c0c0f;
+    --surface: #13131a;
+    --card:    #17171f;
+    --border:  #252530;
+    --text:    #dddde8;
+    --muted:   #5c5c78;
+    --dim:     #21212e;
+
+    --amber:   #d4922a;
+    --amber-bg:#2a1e0a;
+    --amber-bd:#3d2b10;
+
+    --violet:  #9b72d4;
+    --violet-bg:#1a1028;
+    --violet-bd:#2e1c47;
+
+    --cyan:    #3cb8c4;
+    --cyan-bg: #081e22;
+    --cyan-bd: #0f3038;
+
+    --red:     #c45050;
+    --red-bg:  #220d0d;
+    --red-bd:  #3d1515;
+
+    --temp-survive: #3cb86e;
+    --temp-partial: #c4a030;
+    --temp-lost:    #c45050;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 0 0 60px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  .site-header {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .site-header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* ── Intent tabs ─────────────────────────────────────────────── */
+  .intent-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .intent-tabs::-webkit-scrollbar { display: none; }
+
+  .intent-btn {
+    flex-shrink: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--dim);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .intent-btn:active { opacity: 0.7; }
+
+  .intent-btn.active[data-intent="all"]     { background: var(--dim); border-color: var(--text); color: var(--text); }
+  .intent-btn.active[data-intent="sleep"]   { background: var(--violet-bg); border-color: var(--violet); color: var(--violet); }
+  .intent-btn.active[data-intent="focus"]   { background: var(--cyan-bg); border-color: var(--cyan); color: var(--cyan); }
+  .intent-btn.active[data-intent="anxiety"] { background: var(--violet-bg); border-color: var(--violet); color: var(--violet); }
+  .intent-btn.active[data-intent="pain"]    { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+
+  /* ── Legend strip ────────────────────────────────────────────── */
+  .legend-strip {
+    display: flex;
+    gap: 14px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--bg);
+  }
+  .legend-strip::-webkit-scrollbar { display: none; }
+
+  .leg {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .leg-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* ── Cards ───────────────────────────────────────────────────── */
+  .cards {
+    padding: 12px 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .terp-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: opacity 0.2s;
+  }
+
+  .terp-card.dimmed {
+    opacity: 0.28;
+  }
+
+  /* priority badge on left border */
+  .terp-card[data-priority="high"]   { border-left: 3px solid var(--text); }
+  .terp-card[data-priority="medium"] { border-left: 3px solid var(--muted); }
+  .terp-card[data-priority="low"]    { border-left: 3px solid var(--border); }
+
+  .card-top {
+    padding: 14px 14px 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .card-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .card-aroma {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+    font-style: italic;
+  }
+
+  .card-body {
+    padding: 10px 14px 14px;
+  }
+
+  /* ── Effect pills ────────────────────────────────────────────── */
+  .effects-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .pill {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.03em;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .pill-amber  { background: var(--amber-bg);  color: var(--amber);  border: 1px solid var(--amber-bd); }
+  .pill-violet { background: var(--violet-bg); color: var(--violet); border: 1px solid var(--violet-bd); }
+  .pill-cyan   { background: var(--cyan-bg);   color: var(--cyan);   border: 1px solid var(--cyan-bd); }
+  .pill-red    { background: var(--red-bg);    color: var(--red);    border: 1px solid var(--red-bd); }
+
+  /* ── Dab temp bar ────────────────────────────────────────────── */
+  .temp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .temp-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    width: 50px;
+    flex-shrink: 0;
+  }
+
+  .temp-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--dim);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .temp-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    position: absolute;
+    left: 0;
+  }
+
+  .temp-note {
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .survive  { color: var(--temp-survive); }
+  .partial  { color: var(--temp-partial); }
+  .lost     { color: var(--temp-lost); }
+
+  /* ── Note text ───────────────────────────────────────────────── */
+  .card-note {
+    font-size: 0.75rem;
+    color: #999;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  /* ── Collapsible entourage section ───────────────────────────── */
+  .entourage-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--dim);
+    border: none;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .entourage-toggle .arrow {
+    transition: transform 0.2s;
+    font-size: 0.7rem;
+  }
+
+  .entourage-toggle.open .arrow { transform: rotate(180deg); }
+
+  .entourage-body {
+    display: none;
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .entourage-body.open { display: block; }
+
+  .combo {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .combo:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+  .combo-partners {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+
+  .combo-effect {
+    font-size: 0.72rem;
+    color: #999;
+    line-height: 1.45;
+  }
+
+  /* ── Combo section (standalone) ──────────────────────────────── */
+  .section-header {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 18px 16px 8px;
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+  }
+
+  /* ── Temp legend ─────────────────────────────────────────────── */
+  .temp-legend {
+    display: flex;
+    gap: 14px;
+    padding: 8px 16px 12px;
+    flex-wrap: wrap;
+  }
+
+  .tleg {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.62rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .tleg-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* ── Footer ─────────────────────────────────────────────────── */
+  .site-footer {
+    margin: 20px 12px 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    line-height: 1.7;
+    background: var(--surface);
+  }
+
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>// Terp Reference</h1>
+  <div class="intent-tabs">
+    <button class="intent-btn active" data-intent="all">All</button>
+    <button class="intent-btn" data-intent="sleep">Sleep</button>
+    <button class="intent-btn" data-intent="focus">Focus / Day</button>
+    <button class="intent-btn" data-intent="anxiety">Low Anxiety</button>
+    <button class="intent-btn" data-intent="pain">Pain / Body</button>
+  </div>
+</header>
+
+<div class="legend-strip">
+  <div class="leg"><div class="leg-dot" style="background:var(--amber)"></div>body / pain</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--violet)"></div>calm / sleep</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--cyan)"></div>mental / focus</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>caution</div>
+</div>
+
+<div class="cards" id="cards">
+
+  <!-- ══ MYRCENE ══════════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="high" data-intents="sleep pain">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Myrcene</div>
+        <div class="card-aroma">earthy · musky · mango</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-violet">sedating</span>
+        <span class="pill pill-violet">couch-lock</span>
+        <span class="pill pill-amber">muscle relax</span>
+        <span class="pill pill-amber">pain relief</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill survive" style="width:95%"></div></div>
+        <span class="temp-note survive">✓ survives</span>
+      </div>
+      <div class="card-note">Most abundant terp across most flower. Believed to increase THC permeability through the blood-brain barrier — intensifies and speeds onset. Your 420→440 range is well within its active zone (bp ~334°F). Dominant terp in most indicas and heavy hybrids.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Myrcene + Linalool</div>
+        <div class="combo-effect">The sleep stack. Linalool's anxiolytic properties soften myrcene's sedation into something cleaner — less heavy-body, more genuine drowsiness. Best for insomnia or high-anxiety nights.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Myrcene + Caryophyllene</div>
+        <div class="combo-effect">Deep body relief. Myrcene handles muscle tension, caryophyllene handles inflammation via CB2. Together they cover most pain profiles without needing a heavily intoxicating amount.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Myrcene + Pinene</div>
+        <div class="combo-effect">Pinene may counteract myrcene-driven memory fog. Gives a more lucid, functional high even when myrcene is dominant — good if you want body relaxation without feeling dumb.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LIMONENE ══════════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="high" data-intents="focus anxiety">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Limonene</div>
+        <div class="card-aroma">citrus · lemon · orange peel</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-cyan">mood lift</span>
+        <span class="pill pill-cyan">euphoria</span>
+        <span class="pill pill-violet">anti-anxiety</span>
+        <span class="pill pill-cyan">stress relief</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill partial" style="width:60%"></div></div>
+        <span class="temp-note partial">~ partial</span>
+      </div>
+      <div class="card-note">bp ~349°F — low end of your range will preserve more of it; 440° peak will volatilize most of it fast. Recommend front-loading your inhale when chasing limonene. One of the best terps for anxiety-prone sessions — tends to ease rather than worsen paranoia. Bright, uplifting highs.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Limonene + Linalool</div>
+        <div class="combo-effect">Anxiety-kill stack. Limonene provides mood elevation, linalool grounds the edges. Together they're reliable for social settings or when you want high-THC without the ceiling fan of paranoia.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Limonene + Pinene</div>
+        <div class="combo-effect">Peak daytime. Dual uplift on mood and focus — limonene handles the emotional brightness, pinene sharpens cognitive function. Good for creative work or long dog walks.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Limonene + Caryophyllene</div>
+        <div class="combo-effect">Balanced hybrid effect. Caryophyllene adds mild body weight and stress relief to limonene's lift. Popular combo in well-reviewed hybrids for a reason.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CARYOPHYLLENE ══════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="high" data-intents="pain anxiety sleep">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Caryophyllene</div>
+        <div class="card-aroma">black pepper · spice · diesel</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-amber">anti-inflammatory</span>
+        <span class="pill pill-amber">pain relief</span>
+        <span class="pill pill-violet">stress relief</span>
+        <span class="pill pill-amber">CB2 agonist</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill survive" style="width:100%"></div></div>
+        <span class="temp-note survive">✓ survives</span>
+      </div>
+      <div class="card-note">bp ~399°F — handles your full range with ease. The only terpene that binds directly to CB2 receptors (body's peripheral cannabinoid receptors), making it genuinely anti-inflammatory, not just sedating. Great in concentrates for body-focused relief without going fully couch-locked. Holds up extremely well when dabbing.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Caryophyllene + Myrcene</div>
+        <div class="combo-effect">Full-spectrum pain relief. Myrcene relaxes muscle tissue, caryophyllene handles underlying inflammation. Redundant mechanisms covering different receptor types — better together than either alone.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Caryophyllene + Humulene</div>
+        <div class="combo-effect">Anti-inflammatory double-down. Both have strong anti-inflammatory activity and they co-occur naturally in many strains. Good for post-workout or joint soreness without a heavy high.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Caryophyllene + Limonene</div>
+        <div class="combo-effect">Mood + body without sedation. Limonene keeps things bright, caryophyllene handles stress at the body level. One of the most functional combos for evening use before bed but not ready to sleep.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PINENE ══════════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="high" data-intents="focus">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Pinene</div>
+        <div class="card-aroma">pine · fresh · forest air</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-cyan">alertness</span>
+        <span class="pill pill-cyan">memory retention</span>
+        <span class="pill pill-cyan">focus</span>
+        <span class="pill pill-amber">bronchodilator</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill partial" style="width:40%"></div></div>
+        <span class="temp-note partial">~ partial</span>
+      </div>
+      <div class="card-note">bp ~311°F — one of the lowest-boiling common terps. At 420° you're getting what's left after the first vaporization wave; at 440° it's mostly gone. Still present in concentrates at useful levels, but you're getting less of it in your 90-second cycle than on flower. Inhibits acetylcholinesterase — actively counteracts THC-driven short-term memory impairment.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Pinene + Myrcene</div>
+        <div class="combo-effect">Lucid body high. Myrcene relaxes, pinene keeps you mentally present. Good when you want to chill without zoning out completely.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Pinene + Limonene</div>
+        <div class="combo-effect">Functional daytime stack. Both are mentally energizing via different mechanisms — limonene on mood, pinene on cognition and memory. One of the cleanest combos for staying productive.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LINALOOL ══════════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="high" data-intents="sleep anxiety">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Linalool</div>
+        <div class="card-aroma">lavender · floral · light spice</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-violet">anxiolytic</span>
+        <span class="pill pill-violet">sedating</span>
+        <span class="pill pill-amber">muscle relax</span>
+        <span class="pill pill-violet">anti-depressant</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill partial" style="width:65%"></div></div>
+        <span class="temp-note partial">~ partial</span>
+      </div>
+      <div class="card-note">bp ~388°F — survives better than limonene or pinene in your range. The "lavender" terp. Strong anxiolytic without being crushingly sedating at moderate concentrations — the sedation deepens with dose. Particularly effective for anxiety-prone sessions. Very synergistic; rarely the dominant terp but punches above its % when present.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Linalool + Myrcene</div>
+        <div class="combo-effect">The sleep stack — see Myrcene entry. Linalool specifically smooths out myrcene's heavier sedation, targeting anxiety while myrcene handles the body knock.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Linalool + Limonene</div>
+        <div class="combo-effect">Anxiety-kill stack — see Limonene entry. Limonene lifts mood, linalool prevents the mood from tipping into anxious territory. One of the best combos for high-THC concentrates.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Linalool + Caryophyllene</div>
+        <div class="combo-effect">Stress + inflammation double coverage. Linalool handles the neurological stress response, caryophyllene handles the physical. Good for tension headaches or post-stress evenings.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TERPINOLENE ══════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="medium" data-intents="focus">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Terpinolene</div>
+        <div class="card-aroma">floral · fresh · herbal · faintly piney</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-cyan">uplifting</span>
+        <span class="pill pill-cyan">creative</span>
+        <span class="pill pill-cyan">euphoric</span>
+        <span class="pill pill-red">can spike anxiety</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill partial" style="width:55%"></div></div>
+        <span class="temp-note partial">~ partial</span>
+      </div>
+      <div class="card-note">bp ~369°F. Less common as the dominant terp but distinct when it is. Usually means a heady, cerebral, energetic high — less predictable than limonene for anxiety. If you're anxiety-prone, approach slowly or pair with linalool. The dominant terp in Jack Herer-lineage strains.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Terpinolene + Linalool</div>
+        <div class="combo-effect">The safety net. Linalool's anxiolytic effect blunts terpinolene's edge. Makes terpinolene-dominant strains accessible if you're prone to getting racy — look for both on the label before committing.</div>
+      </div>
+      <div class="combo">
+        <div class="combo-partners">Terpinolene + Myrcene</div>
+        <div class="combo-effect">Tempers the head-rush. Myrcene adds body weight that grounds terpinolene's more volatile mental effects. Results in a more balanced, sustained high.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OCIMENE ══════════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="medium" data-intents="focus">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Ocimene</div>
+        <div class="card-aroma">sweet · herbal · tropical · woody</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-cyan">uplifting</span>
+        <span class="pill pill-cyan">energizing</span>
+        <span class="pill pill-cyan">mood boost</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill lost" style="width:20%"></div></div>
+        <span class="temp-note lost">↓ mostly lost</span>
+      </div>
+      <div class="card-note">bp ~140–170°F — extremely volatile. Almost entirely gone by the time you're at 420°. If you're buying for ocimene specifically, you're mostly tasting the residual aroma rather than getting much effect at your temps. More relevant for flower vaping at low temps than dabbing. Usually secondary, not dominant.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Ocimene + Limonene</div>
+        <div class="combo-effect">Amplified brightness. Both are uplifting via different mechanisms, and their aromatics complement each other strongly. When present together the effect is noticeably more energetic and socially engaging.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HUMULENE ══════════════════════════════════════════════════ -->
+  <div class="terp-card" data-priority="low" data-intents="pain">
+    <div class="card-top">
+      <div>
+        <div class="card-name">Humulene</div>
+        <div class="card-aroma">hoppy · earthy · woody · beer-like</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="effects-row">
+        <span class="pill pill-amber">anti-inflammatory</span>
+        <span class="pill pill-amber">appetite suppression</span>
+        <span class="pill pill-violet">subtle calming</span>
+      </div>
+      <div class="temp-row">
+        <span class="temp-label">420→440°</span>
+        <div class="temp-bar-track"><div class="temp-bar-fill survive" style="width:85%"></div></div>
+        <span class="temp-note survive">✓ survives</span>
+      </div>
+      <div class="card-note">bp ~222°F — well within your range, fully active. Same terp that makes IPAs taste like IPAs. Notable: one of the few terps associated with appetite suppression (counteracts munchies). Rarely the dominant terp — usually secondary alongside caryophyllene. More of a modifier than a driver.</div>
+    </div>
+    <button class="entourage-toggle" onclick="toggleEntourage(this)">
+      Entourage combos <span class="arrow">▾</span>
+    </button>
+    <div class="entourage-body">
+      <div class="combo">
+        <div class="combo-partners">Humulene + Caryophyllene</div>
+        <div class="combo-effect">Anti-inflammatory power combo — see Caryophyllene entry. These two co-occur naturally and complement each other's mechanisms. If both are present at &gt;0.2% each, expect meaningful body relief.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Temp legend ─────────────────────────────────────────── -->
+<div class="section-header">// Your Dab Range: 420→440→420°F · 90 sec</div>
+<div class="temp-legend">
+  <div class="tleg"><div class="tleg-dot" style="background:var(--temp-survive)"></div>survives (bp &lt;380°F)</div>
+  <div class="tleg"><div class="tleg-dot" style="background:var(--temp-partial)"></div>partial (bp 340–400°F)</div>
+  <div class="tleg"><div class="tleg-dot" style="background:var(--temp-lost)"></div>mostly lost (bp &lt;250°F)</div>
+</div>
+
+<div class="site-footer">
+  Lab % is what matters, not strain name. &gt;0.5% = active · &gt;1% = dominant · &gt;2% = defining character. Entourage effects are mechanistically plausible but individual response varies. Concentrates amplify terp profiles vs. flower — terp % on concentrate labels is the most actionable number when buying.
+</div>
+
+<script>
+  function toggleEntourage(btn) {
+    btn.classList.toggle('open');
+    btn.nextElementSibling.classList.toggle('open');
+  }
+
+  // Intent filtering
+  document.querySelectorAll('.intent-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.intent-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const intent = btn.dataset.intent;
+      document.querySelectorAll('.terp-card').forEach(card => {
+        if (intent === 'all') {
+          card.classList.remove('dimmed');
+        } else {
+          const intents = card.dataset.intents || '';
+          if (intents.includes(intent)) {
+            card.classList.remove('dimmed');
+          } else {
+            card.classList.add('dimmed');
+          }
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
